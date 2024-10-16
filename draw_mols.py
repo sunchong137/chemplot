@@ -1,6 +1,8 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import py3Dmol
+from rdkit.Chem import rdDepictor
+from rdkit.Chem.Draw import rdMolDraw2D
 
 def draw_3d_sticks(smiles_string):
     # Convert SMILES to RDKit Molecule object
@@ -21,20 +23,12 @@ def draw_3d_sticks(smiles_string):
     return p
 
 
-def save_molecule_png(smiles_string, file_name="molecule_3D_view.png"):
-    """
-    Function to generate and save a 3D plot of a molecule from a SMILES string to a PNG file.
-    
-    Parameters:
-    - smiles_string (str): The SMILES string representing the molecule.
-    - file_name (str): The output file name for the PNG image (default: molecule_3D_view.png).
-    """
-    
-    # Generate RDKit molecule object from SMILES
+def draw_3d_stick_ball(smiles_string, stick_scale=0.1, sphere_scale=0.25):
+    # Convert SMILES to RDKit Molecule object
     mol = Chem.MolFromSmiles(smiles_string)
     mol = Chem.AddHs(mol)  # Add hydrogen atoms
     
-    # Generate 3D coordinates and optimize geometry
+    # Generate 3D coordinates
     AllChem.EmbedMolecule(mol)
     AllChem.UFFOptimizeMolecule(mol)  # Optimize geometry with UFF force field
     
@@ -42,12 +36,26 @@ def save_molecule_png(smiles_string, file_name="molecule_3D_view.png"):
     mb = Chem.MolToMolBlock(mol)
     p = py3Dmol.view(width=400, height=400)
     p.addModel(mb, 'sdf')
-    p.setStyle({'stick': {}})
+    p.setStyle({'stick': {'radius': stick_scale}, 'sphere': {'scale': sphere_scale}})
     p.zoomTo()
     p.show()
-    # Save the 3D view as a PNG file
-    png_data = p.png()  # Capture the PNG binary data
-    with open(file_name, "wb") as f:
-        f.write(png_data)
+    return p
 
-    print(f"Molecule saved to {file_name}")
+def draw_molecule_in_black(smiles, save_name="molecule.png"):
+    # Create the molecule object from the SMILES string
+    mol = Chem.MolFromSmiles(smiles)
+    rdDepictor.Compute2DCoords(mol)  # Generate 2D coordinates
+    
+    # Set up drawing options for black and white
+    drawer = rdMolDraw2D.MolDraw2DCairo(500, 500)  # Create a Cairo image
+    options = drawer.drawOptions()
+    options.useBWAtomPalette()  # Set the palette to black and white
+    options.setBackgroundColour((1,1,1,0))
+    # Draw the molecule
+    drawer.DrawMolecule(mol)
+    drawer.FinishDrawing()
+    
+    # Save and display the image
+    img = drawer.GetDrawingText()
+    with open(save_name, "wb") as f:
+        f.write(img)
